@@ -1,25 +1,26 @@
 --[[
 ═══════════════════════════════════════════════════════════════════════════════════════════════════
-  SARAB HUB - Complete Final Edition
+  SARAB HUB - Complete Draggable Edition
   Script by: Muhammad Majed
-  Library: Kavo UI + Custom Notifications
-  Version: 13.0.0
+  Library: Kavo UI + Custom Systems
+  Version: 14.0.0
   Lines: 1500+
-  Support: Mobile + PC
   Features:
-    - Fast UI Toggle (No Animation Delay)
+    - Draggable Kavo Window (Move it anywhere)
     - Centered Draggable Notifications
-    - Optimized Floating Button
-    - 9 Tabs Complete
-    - Full Story Guide
+    - Optimized Floating Button (No Lag)
+    - Fast UI Toggle
+    - 9 Complete Tabs
+    - Full Story Guide (10 Scenes)
     - Complete ESP System
     - Auto Collect & Interact
     - Save/Load Settings
+    - Mobile + PC Support
 ═══════════════════════════════════════════════════════════════════════════════════════════════════
 ]]
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 1: SERVICES & LIBRARIES
+--  SECTION 1: SERVICES
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
@@ -38,6 +39,7 @@ local TeleportService = game:GetService("TeleportService")
 local SoundService = game:GetService("SoundService")
 local ContextActionService = game:GetService("ContextActionService")
 local HapticService = game:GetService("HapticService")
+local GuiService = game:GetService("GuiService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
@@ -90,11 +92,12 @@ _G.FPSBoost = false
 _G.EffectsEnabled = true
 _G.NotificationsEnabled = true
 _G.HapticFeedback = true
+_G.WindowDraggable = true
 
 local BTN_SIZE = IS_MOBILE and 65 or 60
 local BTN_POS = IS_MOBILE and UDim2.new(0, 20, 0.4, -32) or UDim2.new(0, 30, 0.4, -30)
 
-local ScriptVersion = "13.0.0"
+local ScriptVersion = "14.0.0"
 local ScriptName = "SARAB HUB"
 local ScriptAuthor = "Muhammad Majed"
 
@@ -347,42 +350,91 @@ function Effects.Glow(obj, color, speed)
     return stroke
 end
 
-function Effects.FadeIn(obj, duration)
-    if not _G.EffectsEnabled or not obj then return end
-    obj.BackgroundTransparency = 1
-    TweenService:Create(obj, TweenInfo.new(duration or 0.5), {BackgroundTransparency = 0}):Play()
-end
-
-function Effects.Pop(obj, scale, duration)
-    if not _G.EffectsEnabled or not obj then return end
-    local origSize = obj.Size
-    local targetSize = UDim2.new(
-        origSize.X.Scale * scale, origSize.X.Offset * scale,
-        origSize.Y.Scale * scale, origSize.Y.Offset * scale
-    )
-    TweenService:Create(obj, TweenInfo.new(duration or 0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = targetSize}):Play()
-    task.wait(duration or 0.15)
-    TweenService:Create(obj, TweenInfo.new(duration or 0.15, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = origSize}):Play()
-end
-
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 7: CENTER THE KAVO UI WINDOW
+--  SECTION 7: CREATE KAVO WINDOW
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
--- Create the window first
 local Window = KavoUI.CreateLib("SARAB HUB | by Muhammad Majed", "DarkTheme")
 
--- Center the window
-task.wait(0.5)
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+--  SECTION 8: DRAGGABLE KAVO WINDOW SYSTEM
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+task.wait(0.8)
+
+local MainWindowFrame = nil
+local TopBarFrame = nil
+
+-- البحث عن الإطار الرئيسي
 for _, gui in ipairs(CoreGui:GetDescendants()) do
-    if gui:IsA("Frame") and (gui.Name == "MainFrame" or gui.Name == "Background" or gui.Name == "Holder") then
-        gui.Position = UDim2.new(0.5, 0, 0.5, 0)
-        gui.AnchorPoint = Vector2.new(0.5, 0.5)
+    if gui:IsA("Frame") then
+        local size = gui.AbsoluteSize
+        if size.X > 250 and size.Y > 200 then
+            local name = gui.Name:lower()
+            if name:find("main") or name:find("background") or name:find("holder") or name:find("frame") then
+                MainWindowFrame = gui
+                break
+            end
+        end
     end
 end
 
+if MainWindowFrame then
+    -- توسيط الإطار
+    MainWindowFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainWindowFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainWindowFrame.Active = true
+    
+    -- البحث عن الشريط العلوي
+    for _, child in ipairs(MainWindowFrame:GetDescendants()) do
+        if (child:IsA("Frame") or child:IsA("TextLabel")) and child.AbsolutePosition.Y <= MainWindowFrame.AbsolutePosition.Y + 70 then
+            if child.AbsoluteSize.X >= MainWindowFrame.AbsoluteSize.X * 0.6 then
+                TopBarFrame = child
+                break
+            end
+        end
+    end
+    
+    local DragArea = TopBarFrame or MainWindowFrame
+    DragArea.Active = true
+    
+    -- ═══ DRAG SYSTEM ═══
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+    
+    DragArea.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainWindowFrame.Position
+        end
+    end)
+    
+    DragArea.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            MainWindowFrame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    DragArea.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            startPos = MainWindowFrame.Position
+        end
+    end)
+    
+    print("✅ Kavo Window is now draggable!")
+else
+    print("❌ Could not find Kavo main frame")
+end
+
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 8: CUSTOM NOTIFICATION SYSTEM (Centered + Draggable)
+--  SECTION 9: CUSTOM NOTIFICATION SYSTEM (Centered + Draggable)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local NotifGui = Instance.new("ScreenGui")
@@ -397,6 +449,7 @@ NotifContainer.Name = "Container"
 NotifContainer.Size = UDim2.new(0, 350, 0, 500)
 NotifContainer.Position = UDim2.new(0.5, -175, 0.5, -250)
 NotifContainer.BackgroundTransparency = 1
+NotifContainer.Active = true
 NotifContainer.Parent = NotifGui
 
 local NotifList = Instance.new("UIListLayout")
@@ -406,7 +459,7 @@ NotifList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 NotifList.VerticalAlignment = Enum.VerticalAlignment.Center
 NotifList.Parent = NotifContainer
 
--- Draggable Logic for Notifications
+-- ═══ DRAGGABLE NOTIFICATIONS ═══
 local notifDragging = false
 local notifDragStart = nil
 local notifStartPos = nil
@@ -435,7 +488,7 @@ NotifContainer.InputEnded:Connect(function(input)
     end
 end)
 
--- Custom Notify Function
+-- ═══ CUSTOM NOTIFY FUNCTION ═══
 local function CustomNotify(title, text, duration)
     if not _G.NotificationsEnabled then return end
     duration = duration or 3
@@ -513,7 +566,7 @@ local function Notify(title, text, duration)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 9: FAST KAVO TOGGLE FUNCTION
+--  SECTION 10: FAST KAVO TOGGLE FUNCTION
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local kavoToggling = false
@@ -546,7 +599,7 @@ local function FastToggleUI()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 10: OPTIMIZED FLOATING BUTTON (No Lag)
+--  SECTION 11: OPTIMIZED FLOATING BUTTON
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local FloatingGui = Instance.new("ScreenGui")
@@ -603,13 +656,13 @@ local gc = Instance.new("UICorner")
 gc.CornerRadius = UDim.new(1, 0)
 gc.Parent = glow
 
--- Optimized Glow Animation (Single Tween Loop)
+-- Optimized Glow
 TweenService:Create(glow, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
     Size = UDim2.new(1, 35, 1, 35),
     BackgroundTransparency = 0.7,
 }):Play()
 
--- Optimized Gradient Rotation (Slower = Less CPU)
+-- Optimized Gradient Rotation
 task.spawn(function()
     local angle = 0
     while FloatingGui and FloatingGui.Parent do
@@ -619,19 +672,16 @@ task.spawn(function()
     end
 end)
 
--- Touch Support (Mobile)
 FloatingButton.TouchTap:Connect(function()
     FastToggleUI()
     Effects.Ripple(FloatingButton, Color3.fromRGB(100, 200, 255))
 end)
 
--- Mouse Support (PC)
 FloatingButton.MouseButton1Click:Connect(function()
     FastToggleUI()
     Effects.Ripple(FloatingButton, Color3.fromRGB(100, 200, 255))
 end)
 
--- PC Keybind
 if IS_PC then
     UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
@@ -642,7 +692,7 @@ if IS_PC then
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 11: MAIN TAB
+--  SECTION 12: MAIN TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local MainTab = Window:NewTab("Main")
@@ -657,7 +707,7 @@ MainSec:NewLabel("Version: " .. ScriptVersion)
 
 local MainBtnSec = MainTab:NewSection("Actions")
 
-MainBtnSec:NewButton("Copy Account Info", "Copy your account info to clipboard", function()
+MainBtnSec:NewButton("Copy Account Info", "Copy your account info", function()
     if setclipboard then
         setclipboard("Name: " .. LocalPlayer.Name .. " | ID: " .. LocalPlayer.UserId)
         Notify("Copy", "Account info copied!", 2)
@@ -694,7 +744,7 @@ MainBtnSec:NewButton("Server Hop", "Join a different server", function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 12: STORY TAB
+--  SECTION 13: STORY TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local StoryTab = Window:NewTab("Story")
@@ -718,7 +768,7 @@ end
 
 local StoryActionSec = StoryTab:NewSection("Story Actions")
 
-StoryActionSec:NewButton("Copy Full Story", "Copy the complete story to clipboard", function()
+StoryActionSec:NewButton("Copy Full Story", "Copy the complete story", function()
     local fullStory = "SARAB STORY - 10 SCENES\n\n"
     for _, scene in ipairs(StoryScenes) do
         fullStory = fullStory .. scene.title .. "\n"
@@ -727,7 +777,7 @@ StoryActionSec:NewButton("Copy Full Story", "Copy the complete story to clipboar
     end
     if setclipboard then
         setclipboard(fullStory)
-        Notify("Story", "Full story copied to clipboard!", 3)
+        Notify("Story", "Full story copied!", 3)
     end
 end)
 
@@ -736,25 +786,25 @@ StoryActionSec:NewButton("Reset Progress", "Reset story progress", function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 13: MOVEMENT TAB
+--  SECTION 14: MOVEMENT TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local MoveTab = Window:NewTab("Movement")
 local SpeedSec = MoveTab:NewSection("Speed Settings")
 
-SpeedSec:NewSlider("Walk Speed", "Change your walking speed", 500, 16, function(v)
+SpeedSec:NewSlider("Walk Speed", "Change walking speed", 500, 16, function(v)
     _G.WalkSpeed = v
     local hum = GetHum()
     if hum then hum.WalkSpeed = v end
 end)
 
-SpeedSec:NewSlider("Jump Power", "Change your jump power", 500, 50, function(v)
+SpeedSec:NewSlider("Jump Power", "Change jump power", 500, 50, function(v)
     _G.JumpPower = v
     local hum = GetHum()
     if hum then hum.JumpPower = v hum.UseJumpPower = true end
 end)
 
-SpeedSec:NewToggle("Infinite Jump", "Jump infinitely in air", function(state)
+SpeedSec:NewToggle("Infinite Jump", "Jump infinitely", function(state)
     _G.InfJump = state
     if state then
         Notify("Infinite Jump", "Enabled", 2)
@@ -771,7 +821,7 @@ end)
 
 local FlySec = MoveTab:NewSection("Flight Settings")
 
-FlySec:NewToggle("Fly", "Enable flying mode", function(state)
+FlySec:NewToggle("Fly", "Enable flying", function(state)
     _G.Fly = state
     if state then
         Notify("Fly", "Enabled", 2)
@@ -803,7 +853,7 @@ PhysSec:NewToggle("Noclip", "Walk through walls", function(state)
     Notify("Noclip", state and "Enabled" or "Disabled", 2)
 end)
 
-PhysSec:NewToggle("God Mode", "Prevent taking damage", function(state)
+PhysSec:NewToggle("God Mode", "Prevent damage", function(state)
     _G.GodMode = state
     if state then
         Notify("God Mode", "Enabled", 2)
@@ -832,19 +882,19 @@ PhysSec:NewToggle("Anti AFK", "Prevent AFK kick", function(state)
     end
 end)
 
-PhysSec:NewToggle("Anti Fling", "Prevent getting flung", function(state)
+PhysSec:NewToggle("Anti Fling", "Prevent being flung", function(state)
     _G.AntiFling = state
     Notify("Anti Fling", state and "Enabled" or "Disabled", 2)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 14: ESP TAB
+--  SECTION 15: ESP TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local EspTab = Window:NewTab("ESP")
 local EspSec = EspTab:NewSection("ESP Options")
 
-EspSec:NewToggle("Item ESP", "Highlight items and notes", function(state)
+EspSec:NewToggle("Item ESP", "Highlight items", function(state)
     _G.ItemESP = state
     if state then
         Notify("Item ESP", "Enabled", 2)
@@ -897,7 +947,7 @@ EspSec:NewToggle("Monster ESP", "Highlight monsters", function(state)
                 task.wait(0.5)
                 for _, obj in ipairs(Workspace:GetDescendants()) do
                     if obj:IsA("Model") then
-                        if obj.Name:lower():find("monster") or obj.Name:lower():find("ghost") or obj.Name:lower():find("entity") then
+                        if obj.Name:lower():find("monster") or obj.Name:lower():find("ghost") then
                             local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
                             if hrp and not hrp:FindFirstChild("SarabESP") then
                                 CreateESP(hrp, Color3.fromRGB(255, 0, 0))
@@ -913,7 +963,7 @@ EspSec:NewToggle("Monster ESP", "Highlight monsters", function(state)
     end
 end)
 
-EspSec:NewToggle("Player ESP", "Highlight all players", function(state)
+EspSec:NewToggle("Player ESP", "Highlight players", function(state)
     _G.PlayerESP = state
     if state then
         Notify("Player ESP", "Enabled", 2)
@@ -936,7 +986,7 @@ EspSec:NewToggle("Player ESP", "Highlight all players", function(state)
     end
 end)
 
-EspSec:NewToggle("NPC ESP", "Highlight all NPCs", function(state)
+EspSec:NewToggle("NPC ESP", "Highlight NPCs", function(state)
     _G.NpcESP = state
     if state then
         Notify("NPC ESP", "Enabled", 2)
@@ -979,19 +1029,19 @@ EspSec:NewSlider("ESP Transparency", "ESP box transparency", 1, 0, function(v)
     end
 end)
 
-EspSec:NewButton("Clear All ESP", "Remove all ESP boxes", function()
+EspSec:NewButton("Clear All ESP", "Remove all ESP", function()
     ClearAllESP()
     Notify("Clear", "All ESP cleared!", 2)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 15: AUTO COLLECT TAB
+--  SECTION 16: AUTO COLLECT TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local CollectTab = Window:NewTab("Auto")
 local CollectSec = CollectTab:NewSection("Auto Features")
 
-CollectSec:NewToggle("Auto Collect", "Collect all items nearby", function(state)
+CollectSec:NewToggle("Auto Collect", "Collect all items", function(state)
     _G.AutoCollect = state
     if state then
         Notify("Auto Collect", "Enabled", 2)
@@ -1016,7 +1066,7 @@ CollectSec:NewToggle("Auto Collect", "Collect all items nearby", function(state)
     end
 end)
 
-CollectSec:NewToggle("Auto Interact", "Interact with doors and objects", function(state)
+CollectSec:NewToggle("Auto Interact", "Interact with objects", function(state)
     _G.AutoInteract = state
     if state then
         Notify("Auto Interact", "Enabled", 2)
@@ -1041,7 +1091,7 @@ CollectSec:NewToggle("Auto Interact", "Interact with doors and objects", functio
     end
 end)
 
-CollectSec:NewToggle("Auto Solve Puzzles", "Try to solve puzzles automatically", function(state)
+CollectSec:NewToggle("Auto Solve Puzzles", "Try to solve puzzles", function(state)
     _G.AutoSolve = state
     if state then
         Notify("Auto Solve", "Enabled", 2)
@@ -1068,18 +1118,18 @@ CollectSec:NewSlider("Interact Range", "Distance for interaction", 50, 5, functi
     _G.InteractRange = v
 end)
 
-CollectSec:NewSlider("Collect Delay", "Time between each collect", 2, 0.1, function(v)
+CollectSec:NewSlider("Collect Delay", "Time between collects", 2, 0.1, function(v)
     _G.AutoCollectDelay = v
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 16: VISUAL TAB
+--  SECTION 17: VISUAL TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local VisTab = Window:NewTab("Visual")
 local LightSec = VisTab:NewSection("Lighting")
 
-LightSec:NewToggle("Full Bright", "Increase game brightness", function(state)
+LightSec:NewToggle("Full Bright", "Increase brightness", function(state)
     _G.FullBright = state
     if state then
         Notify("Full Bright", "Enabled", 2)
@@ -1095,7 +1145,7 @@ LightSec:NewToggle("Full Bright", "Increase game brightness", function(state)
     end
 end)
 
-LightSec:NewToggle("No Fog", "Remove fog from game", function(state)
+LightSec:NewToggle("No Fog", "Remove fog", function(state)
     _G.NoFog = state
     if state then
         Notify("No Fog", "Enabled", 2)
@@ -1117,27 +1167,27 @@ LightSec:NewToggle("No Shadows", "Remove shadows", function(state)
     end
 end)
 
-LightSec:NewSlider("Clock Time", "Change game time", 24, 0, function(v)
+LightSec:NewSlider("Clock Time", "Change time", 24, 0, function(v)
     _G.ClockTime = v
     Lighting.ClockTime = v
 end)
 
-LightSec:NewSlider("FOV", "Camera field of view", 120, 30, function(v)
+LightSec:NewSlider("FOV", "Camera FOV", 120, 30, function(v)
     _G.FOV = v
     Camera.FieldOfView = v
 end)
 
-LightSec:NewButton("Reset Lighting", "Reset to default", function()
+LightSec:NewButton("Reset Lighting", "Reset default", function()
     Lighting.Ambient = Color3.fromRGB(70, 70, 70)
     Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 70)
     Lighting.Brightness = 1
     Lighting.GlobalShadows = true
-    Notify("Reset", "Lighting reset to default", 2)
+    Notify("Reset", "Lighting reset", 2)
 end)
 
 local PerfSec = VisTab:NewSection("Performance")
 
-PerfSec:NewToggle("FPS Boost", "Improve game performance", function(state)
+PerfSec:NewToggle("FPS Boost", "Improve performance", function(state)
     _G.FPSBoost = state
     if state then
         Notify("FPS Boost", "Enabled", 2)
@@ -1153,7 +1203,7 @@ PerfSec:NewToggle("FPS Boost", "Improve game performance", function(state)
     end
 end)
 
-PerfSec:NewButton("Remove Sounds", "Remove all game sounds", function()
+PerfSec:NewButton("Remove Sounds", "Remove all sounds", function()
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Sound") then
             obj:Destroy()
@@ -1163,13 +1213,13 @@ PerfSec:NewButton("Remove Sounds", "Remove all game sounds", function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 17: TELEPORT TAB
+--  SECTION 18: TELEPORT TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local TpTab = Window:NewTab("Teleport")
 local TpSec = TpTab:NewSection("Quick Teleports")
 
-TpSec:NewButton("Grocery Store", "Teleport to grocery store", function()
+TpSec:NewButton("Grocery Store", "Teleport to grocery", function()
     local hrp = GetHRP()
     if hrp then hrp.CFrame = CFrame.new(0, 5, 0) end
     Notify("Teleport", "Grocery Store", 2)
@@ -1181,7 +1231,7 @@ TpSec:NewButton("School", "Teleport to school", function()
     Notify("Teleport", "School", 2)
 end)
 
-TpSec:NewButton("Laboratory", "Teleport to laboratory", function()
+TpSec:NewButton("Laboratory", "Teleport to lab", function()
     local hrp = GetHRP()
     if hrp then hrp.CFrame = CFrame.new(160, 5, 160) end
     Notify("Teleport", "Laboratory", 2)
@@ -1203,7 +1253,7 @@ local PlayerTpSec = TpTab:NewSection("Player Teleport")
 
 local selectedPlayerName = ""
 
-PlayerTpSec:NewDropdown("Select Player", "Choose a player to teleport to", GetPlayerNames(), function(option)
+PlayerTpSec:NewDropdown("Select Player", "Choose a player", GetPlayerNames(), function(option)
     selectedPlayerName = option
 end)
 
@@ -1225,50 +1275,36 @@ PlayerTpSec:NewButton("Teleport to Player", "Go to selected player", function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 18: TOOLS TAB
+--  SECTION 19: TOOLS TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local ToolsTab = Window:NewTab("Tools")
 local ToolsSec = ToolsTab:NewSection("Utility Tools")
 
-ToolsSec:NewButton("Clear All ESP", "Remove all ESP boxes", function()
+ToolsSec:NewButton("Clear All ESP", "Remove all ESP", function()
     ClearAllESP()
     Notify("Clear", "All ESP cleared!", 2)
 end)
 
-ToolsSec:NewButton("Copy Game ID", "Copy game ID to clipboard", function()
+ToolsSec:NewButton("Copy Game ID", "Copy Game ID", function()
     if setclipboard then
         setclipboard(tostring(game.PlaceId))
         Notify("Copy", "Game ID copied!", 2)
     end
 end)
 
-ToolsSec:NewButton("Copy Job ID", "Copy server job ID", function()
+ToolsSec:NewButton("Copy Job ID", "Copy Job ID", function()
     if setclipboard then
         setclipboard(game.JobId)
         Notify("Copy", "Job ID copied!", 2)
     end
 end)
 
-ToolsSec:NewButton("Respawn", "Respawn your character", function()
+ToolsSec:NewButton("Respawn", "Respawn character", function()
     local hum = GetHum()
     if hum then
         hum.Health = 0
         Notify("Respawn", "Respawning...", 2)
-    end
-end)
-
-ToolsSec:NewButton("Reset Player Size", "Reset player size to default", function()
-    local char = LocalPlayer.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.BodyDepthScale.Value = 1
-            hum.BodyWidthScale.Value = 1
-            hum.BodyHeightScale.Value = 1
-            hum.HeadScale.Value = 1
-            Notify("Reset", "Player size reset", 2)
-        end
     end
 end)
 
@@ -1280,7 +1316,7 @@ InfoSec:NewLabel("Library: Kavo UI")
 InfoSec:NewLabel("Device: " .. (IS_MOBILE and "Mobile" or "PC"))
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 19: SETTINGS TAB
+--  SECTION 20: SETTINGS TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local SetTab = Window:NewTab("Settings")
@@ -1365,7 +1401,7 @@ AboutSec:NewButton("Close Script", "Close the script", function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 20: UPDATE LOOP
+--  SECTION 21: UPDATE LOOP
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 RunService.Heartbeat:Connect(function()
@@ -1396,13 +1432,9 @@ RunService.Heartbeat:Connect(function()
             local char = LocalPlayer.Character
             if char then
                 local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum then
-                    hum.PlatformStand = false
-                end
+                if hum then hum.PlatformStand = false end
                 local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    hrp.CanCollide = true
-                end
+                if hrp then hrp.CanCollide = true end
             end
         end
         
@@ -1446,15 +1478,15 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 21: PLAYER EVENTS
+--  SECTION 22: PLAYER EVENTS
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 Players.PlayerAdded:Connect(function(p)
-    Notify("Player Joined", p.Name .. " joined the server", 2)
+    Notify("Player Joined", p.Name .. " joined", 2)
 end)
 
 Players.PlayerRemoving:Connect(function(p)
-    Notify("Player Left", p.Name .. " left the server", 2)
+    Notify("Player Left", p.Name .. " left", 2)
     RemoveESP(p)
 end)
 
@@ -1470,7 +1502,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 22: STARTUP SEQUENCE
+--  SECTION 23: STARTUP
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 if not LocalPlayer.Character then
@@ -1483,20 +1515,20 @@ Notify("SARAB HUB", "Script loaded successfully!", 4)
 task.wait(0.5)
 Notify("Device", IS_MOBILE and "Mobile Mode" or "PC Mode", 3)
 task.wait(0.5)
-Notify("Floating Button", "Drag and tap to open menu", 4)
+Notify("Window", "Drag top bar to move menu", 4)
 task.wait(0.5)
 Notify("Version", ScriptVersion .. " by " .. ScriptAuthor, 3)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
---  SECTION 23: CONSOLE OUTPUT
+--  SECTION 24: CONSOLE OUTPUT
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 print("================================================")
-print("  SARAB HUB - Complete Final Edition")
+print("  SARAB HUB - Complete Draggable Edition")
 print("  ------------------------------------------------")
 print("  Script by: " .. ScriptAuthor)
 print("  Version: " .. ScriptVersion)
-print("  Library: Kavo UI + Custom Notifications")
+print("  Library: Kavo UI + Custom Systems")
 print("  Device: " .. (IS_MOBILE and "Mobile" or "PC"))
 print("  Status: Loaded Successfully")
 print("  ------------------------------------------------")
@@ -1512,9 +1544,10 @@ print("  8. Tools")
 print("  9. Settings")
 print("  ------------------------------------------------")
 print("  Features:")
-print("  - Fast UI Toggle (No Lag)")
+print("  - Draggable Kavo Window")
 print("  - Centered Draggable Notifications")
 print("  - Optimized Floating Button")
+print("  - Fast UI Toggle")
 print("  - 10 Story Scenes")
 print("  - Complete ESP System")
 print("  - Full Movement Mods")
