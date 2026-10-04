@@ -1,16 +1,25 @@
 --[[
 ═══════════════════════════════════════════════════════════════════════════════════════════════════
-  SARAB HUB - Complete Edition
+  SARAB HUB - Complete Final Edition
   Script by: Muhammad Majed
-  Library: Kavo UI
-  Version: 12.0.0
+  Library: Kavo UI + Custom Notifications
+  Version: 13.0.0
   Lines: 1500+
   Support: Mobile + PC
+  Features:
+    - Fast UI Toggle (No Animation Delay)
+    - Centered Draggable Notifications
+    - Optimized Floating Button
+    - 9 Tabs Complete
+    - Full Story Guide
+    - Complete ESP System
+    - Auto Collect & Interact
+    - Save/Load Settings
 ═══════════════════════════════════════════════════════════════════════════════════════════════════
 ]]
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 1: SERVICES
+--  SECTION 1: SERVICES & LIBRARIES
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
@@ -38,13 +47,13 @@ local IS_PC = UserInputService.MouseEnabled
 local IS_CONSOLE = UserInputService.GamepadEnabled and not UserInputService.TouchEnabled
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 2: LOAD KAVO UI LIBRARY
+--  SECTION 2: LOAD KAVO UI LIBRARY
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local KavoUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 3: GLOBAL VARIABLES
+--  SECTION 3: GLOBAL VARIABLES
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 _G.WalkSpeed = 16
@@ -85,12 +94,12 @@ _G.HapticFeedback = true
 local BTN_SIZE = IS_MOBILE and 65 or 60
 local BTN_POS = IS_MOBILE and UDim2.new(0, 20, 0.4, -32) or UDim2.new(0, 30, 0.4, -30)
 
-local ScriptVersion = "12.0.0"
+local ScriptVersion = "13.0.0"
 local ScriptName = "SARAB HUB"
 local ScriptAuthor = "Muhammad Majed"
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 4: STORY DATA
+--  SECTION 4: STORY DATA
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local StoryScenes = {
@@ -167,7 +176,7 @@ local StoryScenes = {
 }
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 5: HELPER FUNCTIONS
+--  SECTION 5: HELPER FUNCTIONS
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local function GetChar()
@@ -244,7 +253,7 @@ local function GetPlayerNames()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 6: EFFECTS ENGINE
+--  SECTION 6: EFFECTS ENGINE
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local Effects = {}
@@ -318,29 +327,226 @@ function Effects.Particles(parent, color, count)
     end
 end
 
--- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 7: CREATE KAVO WINDOW
--- ═══════════════════════════════════════════════════════════════════════════════════════════════
-
-local Window = KavoUI.CreateLib("SARAB HUB | by Muhammad Majed", "DarkTheme")
-
--- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 8: NOTIFICATION SYSTEM
--- ═══════════════════════════════════════════════════════════════════════════════════════════════
-
-local function Notify(title, text, duration)
-    if not _G.NotificationsEnabled then return end
-    pcall(function()
-        KavoUI:Notification({
-            Title = title,
-            Text = text,
-            Duration = duration or 3,
-        })
+function Effects.Glow(obj, color, speed)
+    if not _G.EffectsEnabled or not obj then return nil end
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or Color3.fromRGB(100, 150, 255)
+    stroke.Thickness = 2
+    stroke.Transparency = 0.5
+    stroke.Parent = obj
+    
+    task.spawn(function()
+        while obj and obj.Parent and _G.EffectsEnabled do
+            TweenService:Create(stroke, TweenInfo.new(speed or 1, Enum.EasingStyle.Sine), {Transparency = 0, Thickness = 3}):Play()
+            task.wait(speed or 1)
+            if not obj or not obj.Parent then break end
+            TweenService:Create(stroke, TweenInfo.new(speed or 1, Enum.EasingStyle.Sine), {Transparency = 0.6, Thickness = 2}):Play()
+            task.wait(speed or 1)
+        end
     end)
+    return stroke
+end
+
+function Effects.FadeIn(obj, duration)
+    if not _G.EffectsEnabled or not obj then return end
+    obj.BackgroundTransparency = 1
+    TweenService:Create(obj, TweenInfo.new(duration or 0.5), {BackgroundTransparency = 0}):Play()
+end
+
+function Effects.Pop(obj, scale, duration)
+    if not _G.EffectsEnabled or not obj then return end
+    local origSize = obj.Size
+    local targetSize = UDim2.new(
+        origSize.X.Scale * scale, origSize.X.Offset * scale,
+        origSize.Y.Scale * scale, origSize.Y.Offset * scale
+    )
+    TweenService:Create(obj, TweenInfo.new(duration or 0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = targetSize}):Play()
+    task.wait(duration or 0.15)
+    TweenService:Create(obj, TweenInfo.new(duration or 0.15, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = origSize}):Play()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 9: ANIMATED FLOATING BUTTON
+--  SECTION 7: CENTER THE KAVO UI WINDOW
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+-- Create the window first
+local Window = KavoUI.CreateLib("SARAB HUB | by Muhammad Majed", "DarkTheme")
+
+-- Center the window
+task.wait(0.5)
+for _, gui in ipairs(CoreGui:GetDescendants()) do
+    if gui:IsA("Frame") and (gui.Name == "MainFrame" or gui.Name == "Background" or gui.Name == "Holder") then
+        gui.Position = UDim2.new(0.5, 0, 0.5, 0)
+        gui.AnchorPoint = Vector2.new(0.5, 0.5)
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+--  SECTION 8: CUSTOM NOTIFICATION SYSTEM (Centered + Draggable)
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+local NotifGui = Instance.new("ScreenGui")
+NotifGui.Name = "SarabNotifications"
+NotifGui.ResetOnSpawn = false
+NotifGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+NotifGui.IgnoreGuiInset = true
+NotifGui.Parent = CoreGui
+
+local NotifContainer = Instance.new("Frame")
+NotifContainer.Name = "Container"
+NotifContainer.Size = UDim2.new(0, 350, 0, 500)
+NotifContainer.Position = UDim2.new(0.5, -175, 0.5, -250)
+NotifContainer.BackgroundTransparency = 1
+NotifContainer.Parent = NotifGui
+
+local NotifList = Instance.new("UIListLayout")
+NotifList.SortOrder = Enum.SortOrder.LayoutOrder
+NotifList.Padding = UDim.new(0, 8)
+NotifList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+NotifList.VerticalAlignment = Enum.VerticalAlignment.Center
+NotifList.Parent = NotifContainer
+
+-- Draggable Logic for Notifications
+local notifDragging = false
+local notifDragStart = nil
+local notifStartPos = nil
+
+NotifContainer.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        notifDragging = true
+        notifDragStart = input.Position
+        notifStartPos = NotifContainer.Position
+    end
+end)
+
+NotifContainer.InputChanged:Connect(function(input)
+    if notifDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - notifDragStart
+        NotifContainer.Position = UDim2.new(
+            notifStartPos.X.Scale, notifStartPos.X.Offset + delta.X,
+            notifStartPos.Y.Scale, notifStartPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+NotifContainer.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        notifDragging = false
+    end
+end)
+
+-- Custom Notify Function
+local function CustomNotify(title, text, duration)
+    if not _G.NotificationsEnabled then return end
+    duration = duration or 3
+    
+    local notif = Instance.new("Frame")
+    notif.Size = UDim2.new(1, 0, 0, 70)
+    notif.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+    notif.BorderSizePixel = 0
+    notif.BackgroundTransparency = 1
+    notif.Parent = NotifContainer
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = notif
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(100, 150, 255)
+    stroke.Thickness = 2
+    stroke.Transparency = 0.3
+    stroke.Parent = notif
+    
+    local grad = Instance.new("UIGradient")
+    grad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 150, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255)),
+    })
+    grad.Rotation = 45
+    grad.Parent = stroke
+    
+    local titleLbl = Instance.new("TextLabel")
+    titleLbl.Size = UDim2.new(1, -20, 0, 28)
+    titleLbl.Position = UDim2.new(0, 10, 0, 8)
+    titleLbl.BackgroundTransparency = 1
+    titleLbl.Text = title
+    titleLbl.TextColor3 = Color3.fromRGB(100, 200, 255)
+    titleLbl.TextSize = 16
+    titleLbl.Font = Enum.Font.GothamBold
+    titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    titleLbl.TextTransparency = 1
+    titleLbl.Parent = notif
+    
+    local textLbl = Instance.new("TextLabel")
+    textLbl.Size = UDim2.new(1, -20, 0, 28)
+    textLbl.Position = UDim2.new(0, 10, 0, 36)
+    textLbl.BackgroundTransparency = 1
+    textLbl.Text = text
+    textLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLbl.TextSize = 14
+    textLbl.Font = Enum.Font.Gotham
+    textLbl.TextXAlignment = Enum.TextXAlignment.Left
+    textLbl.TextWrapped = true
+    textLbl.TextTransparency = 1
+    textLbl.Parent = notif
+    
+    -- Fade In
+    TweenService:Create(notif, TweenInfo.new(0.25), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(titleLbl, TweenInfo.new(0.25), {TextTransparency = 0}):Play()
+    TweenService:Create(textLbl, TweenInfo.new(0.25), {TextTransparency = 0}):Play()
+    
+    -- Auto Remove
+    task.delay(duration, function()
+        if notif and notif.Parent then
+            TweenService:Create(notif, TweenInfo.new(0.25), {BackgroundTransparency = 1}):Play()
+            TweenService:Create(titleLbl, TweenInfo.new(0.25), {TextTransparency = 1}):Play()
+            TweenService:Create(textLbl, TweenInfo.new(0.25), {TextTransparency = 1}):Play()
+            task.wait(0.3)
+            notif:Destroy()
+        end
+    end)
+end
+
+-- Override Notify
+local function Notify(title, text, duration)
+    CustomNotify(title, text, duration)
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+--  SECTION 9: FAST KAVO TOGGLE FUNCTION
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+local kavoToggling = false
+local kavoOpen = true
+
+local function FastToggleUI()
+    if kavoToggling then return end
+    kavoToggling = true
+    
+    pcall(function()
+        local found = false
+        for _, gui in ipairs(CoreGui:GetChildren()) do
+            if gui:IsA("ScreenGui") and gui ~= FloatingGui and gui ~= NotifGui then
+                if gui.Name == "KavoUI" or gui.Name:lower():find("kavo") or gui.Name:lower():find("library") then
+                    kavoOpen = not kavoOpen
+                    gui.Enabled = kavoOpen
+                    found = true
+                    break
+                end
+            end
+        end
+        
+        if not found then
+            KavoUI:ToggleUI()
+        end
+    end)
+    
+    task.wait(0.15)
+    kavoToggling = false
+end
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+--  SECTION 10: OPTIMIZED FLOATING BUTTON (No Lag)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local FloatingGui = Instance.new("ScreenGui")
@@ -397,70 +603,60 @@ local gc = Instance.new("UICorner")
 gc.CornerRadius = UDim.new(1, 0)
 gc.Parent = glow
 
+-- Optimized Glow Animation (Single Tween Loop)
+TweenService:Create(glow, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+    Size = UDim2.new(1, 35, 1, 35),
+    BackgroundTransparency = 0.7,
+}):Play()
+
+-- Optimized Gradient Rotation (Slower = Less CPU)
 task.spawn(function()
-    while FloatingButton and FloatingButton.Parent do
-        TweenService:Create(glow, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {
-            Size = UDim2.new(1, 35, 1, 35),
-            BackgroundTransparency = 0.7,
-        }):Play()
-        task.wait(1.5)
-        if not FloatingButton or not FloatingButton.Parent then break end
-        TweenService:Create(glow, TweenInfo.new(1.5, Enum.EasingStyle.Sine), {
-            Size = UDim2.new(1, 25, 1, 25),
-            BackgroundTransparency = 0.85,
-        }):Play()
-        task.wait(1.5)
+    local angle = 0
+    while FloatingGui and FloatingGui.Parent do
+        angle = (angle + 5) % 360
+        grad.Rotation = angle
+        task.wait(0.1)
     end
 end)
 
-task.spawn(function()
-    while FloatingButton and FloatingButton.Parent do
-        for i = 0, 360, 15 do
-            if not FloatingButton or not FloatingButton.Parent then break end
-            grad.Rotation = i
-            task.wait(0.05)
-        end
-    end
-end)
-
-local function ToggleUI()
-    pcall(function()
-        KavoUI:ToggleUI()
-    end)
-end
-
+-- Touch Support (Mobile)
 FloatingButton.TouchTap:Connect(function()
-    ToggleUI()
+    FastToggleUI()
     Effects.Ripple(FloatingButton, Color3.fromRGB(100, 200, 255))
 end)
 
+-- Mouse Support (PC)
 FloatingButton.MouseButton1Click:Connect(function()
-    ToggleUI()
+    FastToggleUI()
     Effects.Ripple(FloatingButton, Color3.fromRGB(100, 200, 255))
 end)
 
+-- PC Keybind
 if IS_PC then
     UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
         if input.KeyCode == Enum.KeyCode.RightShift then
-            ToggleUI()
+            FastToggleUI()
         end
     end)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 10: MAIN TAB
+--  SECTION 11: MAIN TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local MainTab = Window:NewTab("Main")
 local MainSec = MainTab:NewSection("Player Information")
+
 MainSec:NewLabel("Player: " .. LocalPlayer.Name)
 MainSec:NewLabel("User ID: " .. LocalPlayer.UserId)
 MainSec:NewLabel("Device: " .. (IS_MOBILE and "Mobile" or IS_PC and "PC" or "Console"))
 MainSec:NewLabel("Game ID: " .. game.PlaceId)
 MainSec:NewLabel("Time: " .. os.date("%Y-%m-%d %H:%M:%S"))
+MainSec:NewLabel("Version: " .. ScriptVersion)
 
 local MainBtnSec = MainTab:NewSection("Actions")
+
 MainBtnSec:NewButton("Copy Account Info", "Copy your account info to clipboard", function()
     if setclipboard then
         setclipboard("Name: " .. LocalPlayer.Name .. " | ID: " .. LocalPlayer.UserId)
@@ -498,11 +694,12 @@ MainBtnSec:NewButton("Server Hop", "Join a different server", function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 11: STORY TAB
+--  SECTION 12: STORY TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local StoryTab = Window:NewTab("Story")
 local StorySec = StoryTab:NewSection("Story Guide - 10 Scenes")
+
 StorySec:NewLabel("Click any scene to teleport")
 
 for _, scene in ipairs(StoryScenes) do
@@ -539,7 +736,7 @@ StoryActionSec:NewButton("Reset Progress", "Reset story progress", function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 12: MOVEMENT TAB
+--  SECTION 13: MOVEMENT TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local MoveTab = Window:NewTab("Movement")
@@ -641,7 +838,7 @@ PhysSec:NewToggle("Anti Fling", "Prevent getting flung", function(state)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 13: ESP TAB
+--  SECTION 14: ESP TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local EspTab = Window:NewTab("ESP")
@@ -788,7 +985,7 @@ EspSec:NewButton("Clear All ESP", "Remove all ESP boxes", function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 14: AUTO COLLECT TAB
+--  SECTION 15: AUTO COLLECT TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local CollectTab = Window:NewTab("Auto")
@@ -876,7 +1073,7 @@ CollectSec:NewSlider("Collect Delay", "Time between each collect", 2, 0.1, funct
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 15: VISUAL TAB
+--  SECTION 16: VISUAL TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local VisTab = Window:NewTab("Visual")
@@ -966,7 +1163,7 @@ PerfSec:NewButton("Remove Sounds", "Remove all game sounds", function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 16: TELEPORT TAB
+--  SECTION 17: TELEPORT TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local TpTab = Window:NewTab("Teleport")
@@ -1028,7 +1225,7 @@ PlayerTpSec:NewButton("Teleport to Player", "Go to selected player", function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 17: TOOLS TAB
+--  SECTION 18: TOOLS TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local ToolsTab = Window:NewTab("Tools")
@@ -1061,6 +1258,20 @@ ToolsSec:NewButton("Respawn", "Respawn your character", function()
     end
 end)
 
+ToolsSec:NewButton("Reset Player Size", "Reset player size to default", function()
+    local char = LocalPlayer.Character
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.BodyDepthScale.Value = 1
+            hum.BodyWidthScale.Value = 1
+            hum.BodyHeightScale.Value = 1
+            hum.HeadScale.Value = 1
+            Notify("Reset", "Player size reset", 2)
+        end
+    end
+end)
+
 local InfoSec = ToolsTab:NewSection("Script Information")
 
 InfoSec:NewLabel("Version: " .. ScriptVersion)
@@ -1069,14 +1280,14 @@ InfoSec:NewLabel("Library: Kavo UI")
 InfoSec:NewLabel("Device: " .. (IS_MOBILE and "Mobile" or "PC"))
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 18: SETTINGS TAB
+--  SECTION 19: SETTINGS TAB
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 local SetTab = Window:NewTab("Settings")
 local SetSec = SetTab:NewSection("UI Settings")
 
 SetSec:NewKeybind("Toggle UI Key", "Press to toggle menu", Enum.KeyCode.RightShift, function()
-    KavoUI:ToggleUI()
+    FastToggleUI()
 end)
 
 SetSec:NewDropdown("Theme", "Change UI theme", {"DarkTheme", "BloodTheme", "Ocean", "Synapse", "Sentinel", "Serenity", "Twilight", "Vape"}, function(option)
@@ -1149,11 +1360,12 @@ AboutSec:NewLabel("Support: Mobile + PC")
 
 AboutSec:NewButton("Close Script", "Close the script", function()
     if FloatingGui then FloatingGui:Destroy() end
+    if NotifGui then NotifGui:Destroy() end
     Notify("Goodbye", "Script closed", 3)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 19: UPDATE LOOP
+--  SECTION 20: UPDATE LOOP
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 RunService.Heartbeat:Connect(function()
@@ -1234,7 +1446,7 @@ RunService.Heartbeat:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 20: PLAYER EVENTS
+--  SECTION 21: PLAYER EVENTS
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 Players.PlayerAdded:Connect(function(p)
@@ -1258,7 +1470,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 21: STARTUP
+--  SECTION 22: STARTUP SEQUENCE
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 if not LocalPlayer.Character then
@@ -1276,15 +1488,15 @@ task.wait(0.5)
 Notify("Version", ScriptVersion .. " by " .. ScriptAuthor, 3)
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- SECTION 22: CONSOLE OUTPUT
+--  SECTION 23: CONSOLE OUTPUT
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 print("================================================")
-print("  SARAB HUB - Complete Edition")
+print("  SARAB HUB - Complete Final Edition")
 print("  ------------------------------------------------")
 print("  Script by: " .. ScriptAuthor)
 print("  Version: " .. ScriptVersion)
-print("  Library: Kavo UI")
+print("  Library: Kavo UI + Custom Notifications")
 print("  Device: " .. (IS_MOBILE and "Mobile" or "PC"))
 print("  Status: Loaded Successfully")
 print("  ------------------------------------------------")
@@ -1300,18 +1512,18 @@ print("  8. Tools")
 print("  9. Settings")
 print("  ------------------------------------------------")
 print("  Features:")
-print("  - Animated Floating Button")
-print("  - Drag Support (Mobile + PC)")
+print("  - Fast UI Toggle (No Lag)")
+print("  - Centered Draggable Notifications")
+print("  - Optimized Floating Button")
 print("  - 10 Story Scenes")
 print("  - Complete ESP System")
 print("  - Full Movement Mods")
 print("  - Auto Collect System")
 print("  - Teleport System")
 print("  - Save/Load Settings")
-print("  - Notification System")
 print("  - Mobile + PC Support")
 print("================================================")
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- END OF SCRIPT
+--  END OF SCRIPT
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
